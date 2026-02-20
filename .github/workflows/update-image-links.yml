@@ -1,0 +1,103 @@
+name: Update Image Links and README
+
+"on":
+  push:
+    branches:
+      - main
+    paths:
+      - '**.png'
+      - '**.jpg'
+      - '**.jpeg'
+      - '**.gif'
+      - '**.svg'
+
+jobs:
+  update-links:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update links and README
+        run: |
+          #!/bin/bash
+          set -e
+
+          REPO_OWNER="${GITHUB_REPOSITORY%/*}"
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          BRANCH="${GITHUB_REF#refs/heads/}"
+
+          IMAGE_FILES=$(find . -maxdepth 1 -type f \
+            \( -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" \
+            -o -iname "*.gif" -o -iname "*.svg" \) \
+            | sed 's|^\./||' | sort)
+
+          echo "Updating links file..."
+          > links
+          echo "$IMAGE_FILES" | while IFS= read -r file; do
+            base_url="https://raw.githubusercontent.com"
+            echo "${base_url}/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${file}" >> links
+          done
+
+          echo "Updating README.md..."
+          cat > README.md << 'EOFREADME'
+          # xdir_image_repository
+
+          This repository contains images for the Xbox Data Platform Team.
+
+          ## Available Images
+
+          EOFREADME
+
+          echo "$IMAGE_FILES" | while IFS= read -r file; do
+            display_name=$(echo "${file%.*}" | sed 's/_/ /g')
+            base_url="https://raw.githubusercontent.com"
+            full_url="${base_url}/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${file}"
+            echo "- [\`${file}\`](${full_url}) - ${display_name}" >> README.md
+          done
+
+          cat >> README.md << 'EOFREADME'
+
+          ## Usage
+
+          To use these images, reference them directly via their raw GitHub URL:
+
+          ```
+          https://raw.githubusercontent.com/OWNER/REPO/BRANCH/FILENAME
+          ```
+
+          All image links are also available in the `links` file.
+
+          ---
+
+          *This README and links file are automatically updated by a GitHub Actions workflow.*
+          EOFREADME
+
+          echo "Files updated successfully."
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet links README.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes detected in links or README.md"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected in links or README.md"
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email \
+            "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add links README.md
+          git commit -m "Auto-update links and README.md for new images"
+          git push
