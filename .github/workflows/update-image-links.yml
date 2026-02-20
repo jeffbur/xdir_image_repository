@@ -40,7 +40,7 @@ jobs:
 
           echo "Updating links file..."
           > links
-          for file in $IMAGE_FILES; do
+          echo "$IMAGE_FILES" | while IFS= read -r file; do
             base_url="https://raw.githubusercontent.com"
             echo "${base_url}/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${file}" >> links
           done
@@ -55,7 +55,7 @@ jobs:
 
           EOFREADME
 
-          for file in $IMAGE_FILES; do
+          echo "$IMAGE_FILES" | while IFS= read -r file; do
             display_name=$(echo "${file%.*}" | sed 's/_/ /g')
             base_url="https://raw.githubusercontent.com"
             full_url="${base_url}/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${file}"
@@ -72,12 +72,11 @@ jobs:
           https://raw.githubusercontent.com/OWNER/REPO/BRANCH/FILENAME
           ```
 
-          All image links are also available in the \`links\` file.
+          All image links are also available in the `links` file.
 
           ---
 
-          *This README and links file are automatically updated by a GitHub*
-          *Actions workflow.*
+          *This README and links file are automatically updated by a GitHub Actions workflow.*
           EOFREADME
 
           echo "Files updated successfully."
